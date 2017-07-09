@@ -1,0 +1,12 @@
+#                          Gerald McBrearty <---none--->
+at-rtmp         201/udp     # AppleTalk Routing Maintenance       
+at-rtmp         201/tcp     # AppleTalk Routing Maintenance       
+at-nbp          202/udp     # AppleTalk Name Binding              
+at-nbp          202/tcp     # AppleTalk Name Binding              
+at-3            203/udp     # AppleTalk Unused                    
+at-3            203/tcp     # AppleTalk Unused                    
+at-echo         204/udp     # AppleTalk Echo                      
+at-echo         204/tcp     # AppleTalk Echo                      
+at-5            205/udp     # AppleTalk Unused                    
+at-5            205/tcp     # AppleTalk Unused                    
+at-zis          206/udp     # AppleTalk Zone Information          

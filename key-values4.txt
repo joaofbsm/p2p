@@ -1,0 +1,12 @@
+#                          Jarkko Oikarinen <jto@TOLSUN.OULU.FI>
+dn6-nlm-aud     195/udp     # DNSIX Network Level Module Audit    
+dn6-nlm-aud     195/tcp     # DNSIX Network Level Module Audit    
+dn6-smm-red     196/udp     # DNSIX Session Mgt Module Audit Redir
+dn6-smm-red     196/tcp     # DNSIX Session Mgt Module Audit Redir
+#                          Lawrence Lebahn <DIA3@PAXRV-NES.NAVY.MIL>
+dls             197/udp     # Directory Location Service        
+dls             197/tcp     # Directory Location Service        
+dls-mon         198/udp     # Directory Location Service Monitor
+dls-mon         198/tcp     # Directory Location Service Monitor
+#                          Scott Bellew <smb@cs.purdue.edu>
+smux            199/udp     # SMUX

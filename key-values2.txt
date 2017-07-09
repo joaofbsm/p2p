@@ -1,0 +1,12 @@
+discard           9/udp     # Discard
+discard           9/tcp     # Discard
+#                          Jon Postel <postel@isi.edu>
+#                10/tcp    Unassigned
+#                10/udp    Unassigned
+systat           11/udp     # Active Users
+systat           11/tcp     # Active Users
+#                          Jon Postel <postel@isi.edu>
+#                12/tcp    Unassigned
+#                12/udp    Unassigned
+daytime          13/udp     # Daytime (RFC 867)
+daytime          13/tcp     # Daytime (RFC 867)
