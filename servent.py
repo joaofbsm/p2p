@@ -27,8 +27,6 @@ def parse_keyvalues(keyvalues_file):
                 key, value = line.strip().split(maxsplit=1)
                 keyvalues[key] = value
 
-    print(keyvalues)
-
     return keyvalues
 
 
@@ -73,7 +71,7 @@ def rcv_msg(sock):
         msg = {
             "type": msg_type,
             "ttl": struct.unpack("!H", data[2:4])[0],
-            "ip": socket.inet_ntoa(data[4:8])[0],
+            "ip": socket.inet_ntoa(data[4:8]),
             "port": struct.unpack("!H", data[8:10])[0], 
             "seq_number": struct.unpack("!I", data[10:14])[0], 
             "key": data[14:].decode("UTF-8")
@@ -83,10 +81,12 @@ def rcv_msg(sock):
 
 
 def flood_reliably(sock, query, peers, source):
-    print("Flooding peers")
+    if peers:
+        print("Flooding peers")
     for peer in peers:
         if peer != source:
             ip, port = peer.split(":")
+            print("QUERY sent to", ip, port)
             send_msg(sock, query, ip, int(port))
 
 #====================================MAIN=====================================#
@@ -100,20 +100,17 @@ def main(args):
     for i in range(2, len(args)):
         peers.append(args[i])
 
-    readable = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 
                              socket.IPPROTO_UDP)
     # Prevents "Address already in use" error
-    readable.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    readable.bind(("", port))
-
-    writable = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 
-                             socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("", port))
 
     seen = set()  # Seen queries
     seq_number = 0
 
     while True:
-        msg = rcv_msg(readable)
+        msg = rcv_msg(sock)
         query = (msg["ip"] + str(msg["port"]) + str(msg["seq_number"]) 
                  + msg["key"])
         if query not in seen:
@@ -130,17 +127,18 @@ def main(args):
 
             if msg["ttl"] > 0:
                 new_query = create_query(msg)
-                flood_reliably(writable, new_query, peers,
+                flood_reliably(sock, new_query, peers,
                                (msg["ip"] + ":" + str(msg["port"])))
                 
             if msg["key"] in keyvalues:
                 response = create_response(msg["key"], keyvalues[msg["key"]])
-                send_msg(writable, response, msg["ip"], msg["port"])
+                print("RESPONSE sent to", msg["ip"], str(msg["port"]))
+                send_msg(sock, response, msg["ip"], msg["port"])
         else:
             print("Query already seen.")
 
-    readable.close()
-    writable.close()
+    sock.close()
+    sock.close()
 
 if __name__ == "__main__":
     main(sys.argv[1:])
