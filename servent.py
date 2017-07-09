@@ -9,13 +9,15 @@ from pprint import pprint
 
 __author__ = "João Francisco Martins, Victor Bernardo Jorge and Lorena Cerbino"
 
-# QUESTIONS
-# - Does python needs to set null char at the end of strings?
-# - Wouldn't it be 202 bytes tops?
-
 #==================================FUNCTIONS==================================#
 
 def parse_keyvalues(keyvalues_file):
+    """Read the correspondent file and parse the key-values.
+    
+    Arguments:
+        keyvalues_file -- Key-values file name.
+    """
+
     keyvalues = {}
     with open(keyvalues_file, "r") as f:
         for line in f:
@@ -27,6 +29,12 @@ def parse_keyvalues(keyvalues_file):
 
 
 def create_query(msg):
+    """Generate QUERY type message with given parameters.
+    
+    Arguments:
+        msg -- Dictionary that contains the message parameters.
+    """
+
     QUERY = struct.pack("!H", 2)
     ttl = struct.pack("!H", msg["ttl"])
     ip = socket.inet_aton(msg["ip"])
@@ -39,6 +47,15 @@ def create_query(msg):
 
 
 def create_response(key, value):
+    """Generate RESPONSE type message with given key-value pair.
+    
+    [description]
+    
+    Arguments:
+        key -- Received key.
+        value -- Requested value.
+    """
+
     RESPONSE = struct.pack("!H", 3)
     response = (RESPONSE + key.encode("UTF-8") + b" " + value.encode("UTF-8")
                + b"\0")
@@ -47,10 +64,27 @@ def create_response(key, value):
 
 
 def send_msg(sock, msg, ip, port):
+    """Sends message msg to IP ip, PORT port via UDP socket sock.
+    
+    Arguments:
+        sock -- UDP socket.
+        msg -- Message to be sent.
+        ip -- Destination IP.
+        port -- Destination PORT.
+    """
+
     sock.sendto(msg, (ip, port))
 
 
 def rcv_msg(sock):
+    """Receives message via UDP socket sock.
+    
+    [description]
+    
+    Arguments:
+        sock -- UDP socket.
+    """
+
     data, addr = sock.recvfrom(2 + 2 + 4 + 2 + 4 + 40)  # Max len = 54 bytes
 
     msg_type = struct.unpack("!H", data[0:2])[0]
@@ -76,10 +110,19 @@ def rcv_msg(sock):
 
 
 def flood_reliably(sock, query, peers, source):
+    """OSPF like reliable flooding to assigned peers.
+    
+    Arguments:
+        sock -- UDP socket.
+        query -- QUERY type message.
+        peers -- Peers assigned to this servent.
+        source -- Address for servent that sent the query.
+    """
+
     if peers:
         print("Flooding peers")
     for peer in peers:
-        if peer != source:
+        if peer != source:  # Prevents loops in the network
             ip, port = peer.split(":")
             print("QUERY sent to", ip, port)
             send_msg(sock, query, ip, int(port))
@@ -103,7 +146,7 @@ def main(args):
     sock.bind(("", port))
 
     seen = set()  # Seen queries
-    seq_number = 0
+    seq_number = 0 
 
     while True:
         msg = rcv_msg(sock)
@@ -137,7 +180,7 @@ def main(args):
                 msg["ttl"] -= 1
                 print("Received query has TTL", msg["ttl"])
 
-                if msg["ttl"] > 0:
+                if msg["ttl"] > 0:  # Time to live didn't expire
                     updated_query = create_query(msg)
                     flood_reliably(sock, updated_query, peers,
                                    (msg["ip"] + ":" + str(msg["port"])))

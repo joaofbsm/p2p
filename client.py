@@ -11,6 +11,12 @@ __author__ = "João Francisco Martins, Victor Bernardo Jorge and Lorena Cerbino"
 #==================================FUNCTIONS==================================#
 
 def create_msg(key):
+    """Generate CLIREQ type message with given key.
+    
+    Arguments:
+        key -- Key assigned to the wanted value.
+    """
+
     CLIREQ = struct.pack("!H", 1)
     msg = CLIREQ + key.encode("UTF-8")
 
@@ -18,6 +24,15 @@ def create_msg(key):
 
 
 def send_msg(sock, msg, ip, port):
+    """Sends UDP message with at most one retransmission.
+    
+    Arguments:
+        sock -- UDP socket.
+        msg -- Message to be sent.
+        ip -- Destination IP.
+        port -- Destination PORT.
+    """
+
     retransmission = False
     while True:
         sock.sendto(msg, (ip, port))
@@ -31,6 +46,12 @@ def send_msg(sock, msg, ip, port):
             return
 
 def rcv_msg(sock):
+    """Receives messages with timeout of 4 seconds
+    
+    Arguments:
+        sock -- UDP socket.
+    """
+    
     responses = 0
     while True:
         try:
