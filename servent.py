@@ -5,17 +5,13 @@
 import sys
 import socket
 import struct
+from pprint import pprint
 
 __author__ = "João Francisco Martins, Victor Bernardo Jorge and Lorena Cerbino"
-
-# TODO
-# - Maybe use argparse
-# - Change how it is being done to check seq_number
 
 # QUESTIONS
 # - Does python needs to set null char at the end of strings?
 # - Wouldn't it be 202 bytes tops?
-# - Why does the received port number does not match?
 
 #==================================FUNCTIONS==================================#
 
@@ -64,7 +60,6 @@ def rcv_msg(sock):
             "type": msg_type,
             "ip": addr[0],
             "port": addr[1],
-            "seq_number": -1,  # If new query, seq_number starts at -1
             "key": data[2:].decode("UTF-8")
         }
     else:  # Message has type QUERY
@@ -96,6 +91,7 @@ def main(args):
     port = int(args[0])
     keyvalues_file = args[1]
     keyvalues = parse_keyvalues(keyvalues_file)
+    pprint(keyvalues)
     peers = []
     for i in range(2, len(args)):
         peers.append(args[i])
@@ -111,34 +107,52 @@ def main(args):
 
     while True:
         msg = rcv_msg(sock)
-        query = (msg["ip"] + str(msg["port"]) + str(msg["seq_number"]) 
-                 + msg["key"])
-        if query not in seen:
-            seen.add(query)
-            print("New query for key \"", msg["key"], "\" from ", msg["ip"], 
-                  ":", msg["port"], sep="")
 
-            if msg["type"] == 1:
-                msg["ttl"] = 3
-                msg["seq_number"] = seq_number
-            elif msg["type"] == 2:
-                print("Current query has TTL", msg["ttl"])
-                msg["ttl"] -= 1
+        if msg["type"] == 1:  # Message has type CLIREQ
+            print("Client request for key \"", msg["key"], "\" from ", 
+                  msg["ip"], ":", msg["port"], sep="")
 
-            if msg["ttl"] > 0:
-                new_query = create_query(msg)
-                flood_reliably(sock, new_query, peers,
-                               (msg["ip"] + ":" + str(msg["port"])))
-                
+            msg["ttl"] = 3
+            msg["seq_number"] = seq_number
+            seq_number += 1
+
+            query = create_query(msg)
+            flood_reliably(sock, query, peers,
+                           (msg["ip"] + ":" + str(msg["port"])))
+
             if msg["key"] in keyvalues:
                 response = create_response(msg["key"], keyvalues[msg["key"]])
-                print("RESPONSE sent to", msg["ip"], str(msg["port"]))
                 send_msg(sock, response, msg["ip"], msg["port"])
-        else:
-            print("Query already seen.")
+                print("RESPONSE sent to", msg["ip"], str(msg["port"]))
+
+        else:  # Message has type QUERY
+            query = (msg["ip"] + str(msg["port"]) + str(msg["seq_number"]) 
+                     + msg["key"])
+            if query not in seen:
+                seen.add(query)
+
+                print("New query for key \"", msg["key"], "\" from ", 
+                      msg["ip"], ":", msg["port"], sep="")
+
+                msg["ttl"] -= 1
+                print("Received query has TTL", msg["ttl"])
+
+                if msg["ttl"] > 0:
+                    updated_query = create_query(msg)
+                    flood_reliably(sock, updated_query, peers,
+                                   (msg["ip"] + ":" + str(msg["port"])))
+                    
+                if msg["key"] in keyvalues:
+                    response = create_response(msg["key"], 
+                                               keyvalues[msg["key"]])
+                    send_msg(sock, response, msg["ip"], msg["port"])
+                    print("RESPONSE sent to", msg["ip"], str(msg["port"]))
+            
+            else:
+                print("Query already seen.")
 
     sock.close()
-    sock.close()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])
