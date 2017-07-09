@@ -41,7 +41,7 @@ def create_query(msg):
     port = struct.pack("!H", msg["port"])
     seq_number = struct.pack("!I", msg["seq_number"])
     key = msg["key"].encode("UTF-8")
-    query = QUERY + ttl + ip + port + seq_number + key
+    query = QUERY + ttl + ip + port + seq_number + key + b"\0"
     
     return query
 
@@ -57,7 +57,7 @@ def create_response(key, value):
     """
 
     RESPONSE = struct.pack("!H", 3)
-    response = (RESPONSE + key.encode("UTF-8") + b" " + value.encode("UTF-8")
+    response = (RESPONSE + key.encode("UTF-8") + b"\t" + value.encode("UTF-8")
                + b"\0")
 
     return response

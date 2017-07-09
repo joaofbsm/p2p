@@ -18,7 +18,8 @@ def create_msg(key):
     """
 
     CLIREQ = struct.pack("!H", 1)
-    msg = CLIREQ + key.encode("UTF-8")
+    key = key.encode("UTF-8")
+    msg = CLIREQ + key + b"\0"
 
     return msg
 
