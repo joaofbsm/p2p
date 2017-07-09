@@ -49,8 +49,6 @@ def create_query(msg):
 def create_response(key, value):
     """Generate RESPONSE type message with given key-value pair.
     
-    [description]
-    
     Arguments:
         key -- Received key.
         value -- Requested value.
@@ -79,13 +77,11 @@ def send_msg(sock, msg, ip, port):
 def rcv_msg(sock):
     """Receives message via UDP socket sock.
     
-    [description]
-    
     Arguments:
         sock -- UDP socket.
     """
 
-    data, addr = sock.recvfrom(2 + 2 + 4 + 2 + 4 + 40)  # Max len = 54 bytes
+    data, addr = sock.recvfrom(2 + 2 + 4 + 2 + 4 + 40 + 1) # Max len = 55 bytes
 
     msg_type = struct.unpack("!H", data[0:2])[0]
 
@@ -94,7 +90,7 @@ def rcv_msg(sock):
             "type": msg_type,
             "ip": addr[0],
             "port": addr[1],
-            "key": data[2:].decode("UTF-8")
+            "key": data[2:].decode("UTF-8").split("\0")[0]
         }
     else:  # Message has type QUERY
         msg = {
@@ -103,7 +99,7 @@ def rcv_msg(sock):
             "ip": socket.inet_ntoa(data[4:8]),
             "port": struct.unpack("!H", data[8:10])[0], 
             "seq_number": struct.unpack("!I", data[10:14])[0], 
-            "key": data[14:].decode("UTF-8")
+            "key": data[14:].decode("UTF-8").split("\0")[0]
         }
 
     return msg
@@ -151,8 +147,10 @@ def main(args):
     while True:
         msg = rcv_msg(sock)
 
+        pprint(msg)
+
         if msg["type"] == 1:  # Message has type CLIREQ
-            print("Client request for key \"", msg["key"], "\" from ", 
+            print("Client request for key \"", msg["key"], "\" received from ", 
                   msg["ip"], ":", msg["port"], sep="")
 
             msg["ttl"] = 3
@@ -168,7 +166,7 @@ def main(args):
                 send_msg(sock, response, msg["ip"], msg["port"])
                 print("RESPONSE sent to", msg["ip"], str(msg["port"]))
 
-        else:  # Message has type QUERY
+        elif msg["type"] == 2:  # Message has type QUERY
             query = (msg["ip"] + str(msg["port"]) + str(msg["seq_number"]) 
                      + msg["key"])
             if query not in seen:

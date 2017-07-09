@@ -34,17 +34,12 @@ def send_msg(sock, msg, ip, port):
         port -- Destination PORT.
     """
 
-    retransmission = False
-    while True:
+    sock.sendto(msg, (ip, port))
+    responses = rcv_msg(sock)
+    if not responses:  # 0 responses received for query
         sock.sendto(msg, (ip, port))
-        responses = rcv_msg(sock)
-        if not responses:  # 0 responses received for query
-            if not retransmission:
-                retransmission = True
-            else:
-                return
-        else:
-            return
+        rcv_msg(sock)
+        
 
 def rcv_msg(sock):
     """Receives messages with timeout of 4 seconds
@@ -58,7 +53,7 @@ def rcv_msg(sock):
         try:
             data, addr = sock.recvfrom(2 + 40 + 1 + 160 + 1)  # Max len = 204
             responses += 1
-            response = data[2:].decode("UTF-8")
+            response = data[2:].decode("UTF-8").split("\0")[0]
             print(addr, "response:", response)
         except socket.timeout:
             if responses > 0:
@@ -79,13 +74,15 @@ def main(args):
     sock.settimeout(4)  # 4 seconds timeout
 
     while True:
-        key = input("Type a key to be retrieved: ")
-         
-        msg = create_msg(key)
+        try:           
+            key = input("Type a key to be retrieved: ")
+             
+            msg = create_msg(key)
 
-        send_msg(sock, msg, servent_ip, servent_port)
-
-    sock.close()
+            send_msg(sock, msg, servent_ip, servent_port)
+        except KeyboardInterrupt:
+            sock.close()
+            break
 
 
 if __name__ == "__main__":
