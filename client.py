@@ -6,7 +6,7 @@ import sys
 import socket
 import struct
 
-__author__ = "João Francisco Martins, Victor Bernardo Jorge and Lorena Cerbino"
+__author__ = "João Francisco Martins, Lorena Cerbino and Victor Bernardo Jorge"
 
 #==================================FUNCTIONS==================================#
 
@@ -34,12 +34,14 @@ def send_msg(sock, msg, ip, port):
         port -- Destination PORT.
     """
 
+    print("Querying overlay network for value...")
     sock.sendto(msg, (ip, port))
     responses = rcv_msg(sock)
     if not responses:  # 0 responses received for query
+        print("Retransmitting...")
         sock.sendto(msg, (ip, port))
         rcv_msg(sock)
-        
+
 
 def rcv_msg(sock):
     """Receives messages with timeout of 4 seconds
@@ -57,7 +59,7 @@ def rcv_msg(sock):
             print(addr, "response:", response)
         except socket.timeout:
             if responses > 0:
-                print("No more responses.")
+                print("No more responses ({} received).".format(responses))
             else:
                 print("No responses received.")
             return responses
@@ -75,7 +77,7 @@ def main(args):
 
     while True:
         try:           
-            key = input("Type a key to be retrieved: ")
+            key = input("> Type a key to be retrieved: ")
              
             msg = create_msg(key)
 

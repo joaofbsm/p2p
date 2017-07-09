@@ -7,7 +7,7 @@ import socket
 import struct
 from pprint import pprint
 
-__author__ = "João Francisco Martins, Victor Bernardo Jorge and Lorena Cerbino"
+__author__ = "João Francisco Martins, Lorena Cerbino and Victor Bernardo Jorge"
 
 #==================================FUNCTIONS==================================#
 
@@ -56,7 +56,7 @@ def create_response(key, value):
 
     RESPONSE = struct.pack("!H", 3)
     response = (RESPONSE + key.encode("UTF-8") + b"\t" + value.encode("UTF-8")
-               + b"\0")
+                + b"\0")
 
     return response
 
@@ -92,6 +92,9 @@ def rcv_msg(sock):
             "port": addr[1],
             "key": data[2:].decode("UTF-8").split("\0")[0]
         }
+
+        print("Client request for key \"{}\" from {}:{}.".format(
+              msg["key"], msg["ip"], msg["port"]))
     else:  # Message has type QUERY
         msg = {
             "type": msg_type,
@@ -101,6 +104,9 @@ def rcv_msg(sock):
             "seq_number": struct.unpack("!I", data[10:14])[0], 
             "key": data[14:].decode("UTF-8").split("\0")[0]
         }
+
+        print("New query for key \"{}\" from servent {}:{}. Received query"
+              " has TTL {}.". format(msg["key"], addr[0], addr[1], msg["ttl"]))
 
     return msg
 
@@ -120,8 +126,24 @@ def flood_reliably(sock, query, peers, source):
     for peer in peers:
         if peer != source:  # Prevents loops in the network
             ip, port = peer.split(":")
-            print("QUERY sent to", ip, port)
+            print("QUERY sent to {}:{}".format(ip, port))
             send_msg(sock, query, ip, int(port))
+
+
+def retrieve_value(msg, keyvalues, sock):
+    """Lookup key in personal dictionary and send it to client if present.
+
+    Arguments:
+        msg -- Received query.
+        keyvalues -- Key-values dictionary.
+        sock -- UDP socket.
+    """
+    
+    if msg["key"] in keyvalues:
+        response = create_response(msg["key"], 
+                                   keyvalues[msg["key"]])
+        send_msg(sock, response, msg["ip"], msg["port"])
+        print("RESPONSE sent to {}:{}".format(msg["ip"], msg["port"]))
 
 #====================================MAIN=====================================#
 
@@ -145,54 +167,38 @@ def main(args):
     seq_number = 0 
 
     while True:
-        msg = rcv_msg(sock)
+        try:
+            msg = rcv_msg(sock)
 
-        pprint(msg)
+            if msg["type"] == 1:  # Message has type CLIREQ
+                msg["ttl"] = 3
+                msg["seq_number"] = seq_number
+                seq_number += 1
 
-        if msg["type"] == 1:  # Message has type CLIREQ
-            print("Client request for key \"", msg["key"], "\" received from ", 
-                  msg["ip"], ":", msg["port"], sep="")
+                query = create_query(msg)
+                flood_reliably(sock, query, peers, "{}:{}".format(msg["ip"], 
+                                                                  msg["port"]))
 
-            msg["ttl"] = 3
-            msg["seq_number"] = seq_number
-            seq_number += 1
+                retrieve_value(msg, keyvalues, sock)
+            elif msg["type"] == 2:  # Message has type QUERY
+                query = "{},{},{},{}".format(msg["ip"], msg["port"], 
+                                             msg["seq_number"], msg["key"])
+                if query not in seen:
+                    seen.add(query)
+                    msg["ttl"] -= 1
 
-            query = create_query(msg)
-            flood_reliably(sock, query, peers,
-                           (msg["ip"] + ":" + str(msg["port"])))
+                    if msg["ttl"] > 0:  # Time to live didn't expire
+                        updated_query = create_query(msg)
+                        flood_reliably(sock, updated_query, peers,
+                                       "{}:{}".format(msg["ip"], msg["port"]))
+                        
+                    retrieve_value(msg, keyvalues, sock)
+                else:
+                    print("Query already seen.")
 
-            if msg["key"] in keyvalues:
-                response = create_response(msg["key"], keyvalues[msg["key"]])
-                send_msg(sock, response, msg["ip"], msg["port"])
-                print("RESPONSE sent to", msg["ip"], str(msg["port"]))
-
-        elif msg["type"] == 2:  # Message has type QUERY
-            query = (msg["ip"] + str(msg["port"]) + str(msg["seq_number"]) 
-                     + msg["key"])
-            if query not in seen:
-                seen.add(query)
-
-                print("New query for key \"", msg["key"], "\" from ", 
-                      msg["ip"], ":", msg["port"], sep="")
-
-                msg["ttl"] -= 1
-                print("Received query has TTL", msg["ttl"])
-
-                if msg["ttl"] > 0:  # Time to live didn't expire
-                    updated_query = create_query(msg)
-                    flood_reliably(sock, updated_query, peers,
-                                   (msg["ip"] + ":" + str(msg["port"])))
-                    
-                if msg["key"] in keyvalues:
-                    response = create_response(msg["key"], 
-                                               keyvalues[msg["key"]])
-                    send_msg(sock, response, msg["ip"], msg["port"])
-                    print("RESPONSE sent to", msg["ip"], str(msg["port"]))
-            
-            else:
-                print("Query already seen.")
-
-    sock.close()
+        except KeyboardInterrupt:
+            sock.close()
+            break
 
 
 if __name__ == "__main__":
