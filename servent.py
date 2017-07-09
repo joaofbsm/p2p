@@ -106,7 +106,8 @@ def rcv_msg(sock):
         }
 
         print("New query for key \"{}\" from servent {}:{}. Received query"
-              " has TTL {}.". format(msg["key"], addr[0], addr[1], msg["ttl"]))
+              " has sequence number {} and TTL {}.". format(msg["key"], 
+              addr[0], addr[1], msg["seq_number"], msg["ttl"]))
 
     return msg
 
@@ -138,7 +139,7 @@ def retrieve_value(msg, keyvalues, sock):
         keyvalues -- Key-values dictionary.
         sock -- UDP socket.
     """
-    
+
     if msg["key"] in keyvalues:
         response = create_response(msg["key"], 
                                    keyvalues[msg["key"]])
@@ -191,7 +192,9 @@ def main(args):
                         updated_query = create_query(msg)
                         flood_reliably(sock, updated_query, peers,
                                        "{}:{}".format(msg["ip"], msg["port"]))
-                        
+                    else:
+                        print("Time to live expired.")
+
                     retrieve_value(msg, keyvalues, sock)
                 else:
                     print("Query already seen.")
