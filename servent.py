@@ -109,7 +109,7 @@ def rcv_msg(sock):
               " has sequence number {} and TTL {}.". format(msg["key"], 
               addr[0], addr[1], msg["seq_number"], msg["ttl"]))
 
-    return msg
+    return msg, addr
 
 
 def flood_reliably(sock, query, peers, source):
@@ -119,7 +119,7 @@ def flood_reliably(sock, query, peers, source):
         sock -- UDP socket.
         query -- QUERY type message.
         peers -- Peers assigned to this servent.
-        source -- Address for servent that sent the query.
+        source -- Address from servent that sent the query.
     """
 
     if peers:
@@ -169,7 +169,7 @@ def main(args):
 
     while True:
         try:
-            msg = rcv_msg(sock)
+            msg, src_addr = rcv_msg(sock)
 
             if msg["type"] == 1:  # Message has type CLIREQ
                 msg["ttl"] = 3
@@ -177,8 +177,8 @@ def main(args):
                 seq_number += 1
 
                 query = create_query(msg)
-                flood_reliably(sock, query, peers, "{}:{}".format(msg["ip"], 
-                                                                  msg["port"]))
+                flood_reliably(sock, query, peers, "{}:{}".format(src_addr[0], 
+                                                                  src_addr[1]))
 
                 retrieve_value(msg, keyvalues, sock)
             elif msg["type"] == 2:  # Message has type QUERY
@@ -191,7 +191,7 @@ def main(args):
                     if msg["ttl"] > 0:  # Time to live didn't expire
                         updated_query = create_query(msg)
                         flood_reliably(sock, updated_query, peers,
-                                       "{}:{}".format(msg["ip"], msg["port"]))
+                                       "{}:{}".format(src_addr[0],src_addr[1]))
                     else:
                         print("Time to live expired.")
 
